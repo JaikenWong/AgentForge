@@ -1,0 +1,30 @@
+{
+  "name": "agentforge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AgentForge - 对话驱动的企业 Agent 工厂平台",
+  "scripts": {
+    "dev": "pnpm --filter './apps/*' run dev",
+    "build": "pnpm --filter './apps/*' run build",
+    "lint": "eslint 'apps/*/src/**/*.ts' 'packages/*/src/**/*.ts'",
+    "format": "prettier --write 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.ts'",
+    "db:generate": "pnpm --filter '@agentforge/api' run db:generate",
+    "db:migrate": "pnpm --filter '@agentforge/api' run db:migrate",
+    "db:studio": "pnpm --filter '@agentforge/api' run db:studio"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.8.0"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  name            String        @db.VarChar(100)
+  description     String?
+  status          String        @default("defined") @db.VarChar(20)
+  systemPrompt    String        @map("system_prompt") @db.Text
+  tools           Json          @default("[]")
+  channels        Json          @default("[]")
+  lifecycle       Json          @default("{}")
+  model           String        @default("astron-code-latest") @db.VarChar(50)
+  version         Int           @default(1)
+  parentId        String?       @map("parent_id") @db.Uuid
+  ownerId         String        @map("owner_id") @db.Uuid
+  triggerCount    Int           @default(0) @map("trigger_count")
+  lastTriggeredAt DateTime?     @map("last_triggered_at") @db.Timestamptz
+  expireNotified  Boolean       @default(false) @map("expire_notified")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt       DateTime?     @map("expires_at") @db.Timestamptz
+  archivedAt      DateTime?     @map("archived_at") @db.Timestamptz
+
+  parent          Agent?        @relation("AgentClone", fields: [parentId], references: [id])
+  children        Agent[]       @relation("AgentClone")
+  memories        AgentMemory[]
+  executionLogs   ExecutionLog[]
+  sessionHistory  SessionHistory[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([ownerId])
+  @@map("agents")
+}
+
+model AgentMemory {
+  id          String    @id @default(uuid()) @db.Uuid
+  agentId     String    @map("agent_id") @db.Uuid
+  type        String    @db.VarChar(20)
+  content     String    @db.Text
+  embedding   Bytes?
+  source      String?   @db.VarChar(50)
+  importance  Float     @default(0.5)
+  accessCount Int       @default(0) @map("access_count")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+
+  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([type])
+  @@map("agent_memory")
+}
+
+model ExecutionLog {
+  id            String    @id @default(uuid()) @db.Uuid
+  agentId       String    @map("agent_id") @db.Uuid
+  sessionId     String?   @map("session_id") @db.Uuid
+  channel       String?   @db.VarChar(50)
+  triggerType   String?   @map("trigger_type") @db.VarChar(50)
+  input         String?   @db.Text
+  output        String?   @db.Text
+  toolsUsed     Json      @default("[]") @map("tools_used")
+  qualityScore  Float?    @map("quality_score")
+  tokensUsed    Int?      @map("tokens_used")
+  latencyMs     Int?      @map("latency_ms")
+  userFeedback  Int       @default(0) @map("user_feedback")
+  error         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("execution_logs")
+}
+
+model SessionHistory {
+  id        String    @id @default(uuid()) @db.Uuid
+  sessionId String    @map("session_id") @db.Uuid
+  agentId   String    @map("agent_id") @db.Uuid
+  role      String    @db.VarChar(20)
+  content   String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([agentId])
+  @@map("session_history")
+}

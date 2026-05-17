@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AgentForge · 星辰熔炉 (Hero Demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void:        #05060c;
+    --bg-forge:       #1a0608;
+    --bg-card:        #0d0e16;
+    --lava:           #ff3b1a;
+    --lava-deep:      #c92410;
+    --star-gold:      #ffb800;
+    --quench-cyan:    #3affd5;
+    --bronze:         #b8893d;
+    --ink:            #e8e3d6;
+    --ink-dim:        #8a8473;
+    --line:           rgba(255, 184, 0, 0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; min-height: 100vh; background: var(--bg-void); color: var(--ink); font-family: 'Inter', -apple-system, sans-serif; overflow-x: hidden; }
+
+  /* ===== 背景层 ===== */
+  .stage {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  /* 深空底+炉腔暗红径向 */
+  .stage::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 70%, rgba(255, 59, 26, 0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(255, 184, 0, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 20% 20%, rgba(58, 255, 213, 0.04) 0%, transparent 40%);
+    z-index: -2;
+  }
+  /* 星图细点 */
+  .stars {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 80% 20%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 30% 85%, rgba(255,184,0,0.5), transparent),
+      radial-gradient(1px 1px at 90% 60%, rgba(58,255,213,0.4), transparent),
+      radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(2px 2px at 70% 10%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 45% 45%, rgba(255,184,0,0.4), transparent);
+    background-size: 800px 600px;
+    background-repeat: repeat;
+    opacity: 0.6;
+    z-index: -1;
+    animation: starDrift 200s linear infinite;
+  }
+  @keyframes starDrift { to { background-position: 800px 600px; } }
+
+  /* 网格背景层 */
+  .grid-floor {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 184, 0, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 184, 0, 0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 25%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 25%, transparent 70%);
+    z-index: -1;
+  }
+
+  /* ===== Header ===== */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(20px);
+    background: rgba(5, 6, 12, 0.7);
+    border-bottom: 1px solid var(--line);
+  }
+  .header-inner {
+    max-width: 1400px; margin: 0 auto;
+    padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 14px;
+  }
+  /* 篆刻印章 logo (C) — 朱砂方印 */
+  .brand-mark {
+    width: 44px; height: 44px;
+    position: relative;
+    background: linear-gradient(135deg, #c92410 0%, #8a1a0a 100%);
+    box-shadow:
+      0 0 14px rgba(201, 36, 16, 0.5),
+      inset 0 1px 0 rgba(255, 200, 180, 0.3),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+    transform: rotate(-3deg);
+    border: 1px solid #5a0e05;
+  }
+  /* 印章雕痕纹理 */
+  .brand-mark::before {
+    content: '';
+    position: absolute; inset: 3px;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255, 230, 210, 0.4), transparent),
+      radial-gradient(1px 1px at 70% 60%, rgba(0, 0, 0, 0.3), transparent),
+      radial-gradient(1px 1px at 40% 80%, rgba(0, 0, 0, 0.4), transparent),
+      radial-gradient(1px 1px at 85% 25%, rgba(0, 0, 0, 0.3), transparent);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+  .brand-mark span {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    color: #fff5e8;
+    font-size: 22px;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.3);
+    letter-spacing: -0.05em;
+  }
+  /* 边缘磨损 */
+  .brand-mark::after {
+    content: '';
+    position: absolute; inset: 0;
+    box-shadow:
+      inset 2px 0 0 rgba(255, 255, 255, 0.08),
+      inset -2px -1px 0 rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+  .brand-name {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+  }
+  .brand-name b {
+    background: linear-gradient(90deg, var(--star-gold), var(--lava));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .brand-sub {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 11px;
+    color: var(--ink-dim);
+    letter-spacing: 0.3em;
+    margin-top: 2px;
+  }
+  nav { display: flex; gap: 24px; }
+  nav a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: var(--star-gold); }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid rgba(255, 184, 0, 0.3);
+    border-radius: 100px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--star-gold);
+    background: rgba(255, 184, 0, 0.05);
+  }
+  .status-pill::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--star-gold);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--star-gold);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  /* ===== Hero ===== */
+  .hero {
+    position: relative;
+    max-width: 1400px; margin: 0 auto;
+    padding: 60px 32px 80px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    min-height: calc(100vh - 80px);
+  }
+  .hero-left { z-index: 2; }
+  .seal-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 32px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 13px;
+    color: var(--bronze);
+    letter-spacing: 0.4em;
+  }
+  .seal-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--bronze));
+  }
+  h1.hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: clamp(48px, 6vw, 88px);
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    margin-bottom: 24px;
+  }
+  h1.hero-title .l1 {
+    display: block;
+    background: linear-gradient(180deg, #fff 30%, var(--star-gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 60px rgba(255, 184, 0, 0.3);
+  }
+  h1.hero-title .l2 {
+    display: block;
+    color: var(--ink);
+    opacity: 0.5;
+    font-size: 0.55em;
+    letter-spacing: 0.5em;
+    margin-top: 16px;
+    font-weight: 500;
+  }
+  .hero-poem {
+    margin: 20px 0 36px;
+    font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+    font-size: 22px;
+    color: var(--ink);
+    opacity: 0.85;
+    line-height: 1.8;
+    letter-spacing: 0.15em;
+  }
+  .hero-poem b {
+    color: var(--lava);
+    font-weight: inherit;
+  }
+  .hero-desc {
+    color: var(--ink-dim);
+    font-size: 15px;
+    line-height: 1.8;
+    margin-bottom: 40px;
+    max-width: 480px;
+  }
+  .cta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .btn-primary {
+    position: relative;
+    padding: 16px 36px;
+    background: linear-gradient(135deg, var(--lava), var(--star-gold));
+    color: #1a0a00;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.2s;
+    box-shadow:
+      0 8px 32px rgba(255, 59, 26, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-primary::after {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.5s;
+  }
+  .btn-primary:hover::after { left: 100%; }
+  .btn-ghost {
+    padding: 16px 36px;
+    border: 1px solid rgba(255, 184, 0, 0.3);
+    color: var(--star-gold);
+    background: transparent;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover {
+    border-color: var(--star-gold);
+    background: rgba(255, 184, 0, 0.08);
+  }
+
+  /* ===== 炉心 (3D Forge Core) ===== */
+  .hero-right {
+    position: relative;
+    height: 600px;
+    perspective: 1200px;
+  }
+
+  /* ===== A · 蓝图剖面技术注释层 ===== */
+  .blueprint {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(58, 255, 213, 0.6);
+    letter-spacing: 0.15em;
+    z-index: 3;
+  }
+  .bp-callout {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bp-callout .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--quench-cyan);
+    box-shadow: 0 0 8px var(--quench-cyan);
+    flex-shrink: 0;
+  }
+  .bp-callout .line {
+    height: 1px;
+    background: linear-gradient(90deg, var(--quench-cyan), transparent);
+  }
+  .bp-callout .label {
+    white-space: nowrap;
+    background: rgba(5, 6, 12, 0.7);
+    padding: 4px 8px;
+    border: 1px solid rgba(58, 255, 213, 0.3);
+    backdrop-filter: blur(4px);
+  }
+  .bp-callout .label b {
+    color: var(--star-gold);
+    font-weight: 700;
+  }
+  /* 上方注释 */
+  .bp-1 { top: 8%; left: 8%; width: 280px; }
+  .bp-1 .line { width: 80px; }
+  /* 右上 */
+  .bp-2 { top: 18%; right: 4%; width: 240px; flex-direction: row-reverse; }
+  .bp-2 .line { width: 60px; background: linear-gradient(-90deg, var(--quench-cyan), transparent); }
+  /* 左中 */
+  .bp-3 { top: 48%; left: 2%; width: 220px; }
+  .bp-3 .line { width: 70px; }
+  /* 右中 */
+  .bp-4 { top: 56%; right: 6%; width: 240px; flex-direction: row-reverse; }
+  .bp-4 .line { width: 60px; background: linear-gradient(-90deg, var(--quench-cyan), transparent); }
+  /* 下方尺寸 */
+  .bp-5 { bottom: 8%; left: 50%; transform: translateX(-50%); }
+  .bp-dim {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--star-gold);
+  }
+  .bp-dim .tick {
+    width: 8px; height: 1px;
+    background: var(--star-gold);
+    position: relative;
+  }
+  .bp-dim .tick::before {
+    content: ''; position: absolute; left: 0; top: -4px;
+    width: 1px; height: 9px; background: var(--star-gold);
+  }
+  .bp-dim .tick::after {
+    content: ''; position: absolute; right: 0; top: -4px;
+    width: 1px; height: 9px; background: var(--star-gold);
+  }
+  .bp-dim .span-bar {
+    width: 120px; height: 1px;
+    background: var(--star-gold);
+    position: relative;
+  }
+  .bp-dim .span-bar::before,
+  .bp-dim .span-bar::after {
+    content: ''; position: absolute;
+    width: 1px; height: 9px;
+    background: var(--star-gold); top: -4px;
+  }
+  .bp-dim .span-bar::before { left: 0; }
+  .bp-dim .span-bar::after { right: 0; }
+
+  /* 四角铆钉 + 坐标 */
+  .bp-corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    border: 1px solid rgba(255, 184, 0, 0.4);
+  }
+  .bp-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+  .bp-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+  .bp-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+  .bp-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+  .bp-axis {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--bronze);
+    letter-spacing: 0.3em;
+  }
+  .bp-axis.x { bottom: 24px; left: 24px; }
+  .bp-axis.y { top: 24px; right: 24px; }
+
+  /* 圆形测量弧线 */
+  .bp-arc {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 460px; height: 460px;
+    border: 1px dashed rgba(58, 255, 213, 0.15);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .bp-arc-2 {
+    width: 540px; height: 540px;
+    border: 1px solid rgba(255, 184, 0, 0.08);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  /* 弧上的刻度 */
+  .bp-tick-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 460px; height: 460px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .bp-tick-ring svg { width: 100%; height: 100%; }
+  .forge {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px; height: 420px;
+    transform-style: preserve-3d;
+    animation: forge-spin 24s linear infinite;
+  }
+  @keyframes forge-spin {
+    0%   { transform: translate(-50%, -50%) rotateX(15deg) rotateY(0deg); }
+    100% { transform: translate(-50%, -50%) rotateX(15deg) rotateY(360deg); }
+  }
+  .ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    border: 1px solid var(--star-gold);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .ring-1 {
+    width: 420px; height: 420px;
+    border-width: 1px;
+    border-color: rgba(255, 184, 0, 0.4);
+    box-shadow:
+      0 0 60px rgba(255, 184, 0, 0.2),
+      inset 0 0 60px rgba(255, 59, 26, 0.15);
+  }
+  .ring-2 {
+    width: 340px; height: 340px;
+    border-color: rgba(255, 59, 26, 0.5);
+    transform: translate(-50%, -50%) rotateX(70deg);
+    animation: ring2-spin 16s linear infinite;
+  }
+  @keyframes ring2-spin { to { transform: translate(-50%, -50%) rotateX(70deg) rotateZ(360deg); } }
+  .ring-3 {
+    width: 280px; height: 280px;
+    border-color: rgba(58, 255, 213, 0.4);
+    border-style: dashed;
+    transform: translate(-50%, -50%) rotateX(45deg) rotateY(45deg);
+    animation: ring3-spin 20s linear infinite reverse;
+  }
+  @keyframes ring3-spin { to { transform: translate(-50%, -50%) rotateX(45deg) rotateY(45deg) rotateZ(360deg); } }
+  /* 八卦炉口 (中心) */
+  .core {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 180px; height: 180px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 50% 50%,
+      #fff 0%,
+      var(--star-gold) 15%,
+      var(--lava) 45%,
+      var(--lava-deep) 70%,
+      var(--bg-forge) 100%);
+    border-radius: 50%;
+    box-shadow:
+      0 0 80px var(--lava),
+      0 0 160px rgba(255, 184, 0, 0.6),
+      0 0 240px rgba(255, 59, 26, 0.3);
+    animation: core-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes core-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 80px var(--lava),
+        0 0 160px rgba(255, 184, 0, 0.6),
+        0 0 240px rgba(255, 59, 26, 0.3);
+    }
+    50% {
+      box-shadow:
+        0 0 100px var(--lava),
+        0 0 200px rgba(255, 184, 0, 0.8),
+        0 0 320px rgba(255, 59, 26, 0.5);
+    }
+  }
+  /* 八卦阵纹 */
+  .core-trigram {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 200px; height: 200px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: trigram-spin 18s linear infinite reverse;
+  }
+  @keyframes trigram-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+  .core-trigram svg { width: 100%; height: 100%; }
+
+  /* 火星粒子 */
+  .embers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .ember {
+    position: absolute;
+    bottom: -10%;
+    width: 4px; height: 4px;
+    background: radial-gradient(circle, var(--star-gold), var(--lava) 60%, transparent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--star-gold);
+    animation: ember-rise linear infinite;
+  }
+  @keyframes ember-rise {
+    0% {
+      transform: translateY(0) translateX(0) scale(1);
+      opacity: 0;
+    }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% {
+      transform: translateY(-700px) translateX(var(--drift)) scale(0.3);
+      opacity: 0;
+    }
+  }
+
+  /* 剑光扫过 */
+  .sword-flash {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 480px; height: 2px;
+    transform-origin: left center;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    background: linear-gradient(90deg, transparent, var(--quench-cyan), transparent);
+    opacity: 0;
+    animation: flash 6s ease-in-out infinite;
+  }
+  @keyframes flash {
+    0%, 88%, 100% { opacity: 0; }
+    92% { opacity: 0.9; box-shadow: 0 0 24px var(--quench-cyan); }
+  }
+
+  /* ===== 五序 (锻造五序 Pipeline) ===== */
+  .pipeline {
+    position: relative;
+    max-width: 1400px;
+    margin: 40px auto 80px;
+    padding: 60px 32px;
+  }
+  .section-tag {
+    text-align: center;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--star-gold);
+    letter-spacing: 0.4em;
+  }
+  .section-title {
+    text-align: center;
+    margin-bottom: 60px;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: 36px;
+    color: var(--ink);
+  }
+  .section-title span {
+    color: var(--lava);
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    position: relative;
+  }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 50px;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      var(--lava) 20%,
+      var(--star-gold) 50%,
+      var(--lava) 80%,
+      transparent);
+    z-index: 0;
+  }
+  .step {
+    position: relative;
+    text-align: center;
+    z-index: 1;
+  }
+  .step-node {
+    width: 100px; height: 100px;
+    margin: 0 auto 20px;
+    position: relative;
+    background: radial-gradient(circle, var(--bg-card) 30%, var(--bg-void));
+    border: 1px solid var(--star-gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow:
+      0 0 30px rgba(255, 184, 0, 0.3),
+      inset 0 0 20px rgba(255, 59, 26, 0.1);
+    transition: all 0.3s;
+  }
+  .step:hover .step-node {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 50px rgba(255, 184, 0, 0.5),
+      inset 0 0 30px rgba(255, 59, 26, 0.2);
+  }
+  .step-node-glyph {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--star-gold);
+    text-shadow: 0 0 15px var(--star-gold);
+  }
+  .step-idx {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 22px; height: 22px;
+    background: var(--lava);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .step-name {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 4px;
+    color: var(--ink);
+  }
+  .step-en {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--bronze);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  .step-desc {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    max-width: 160px;
+    margin: 0 auto;
+  }
+
+  /* ===== 欧冶子签章 ===== */
+  .signature {
+    position: absolute;
+    bottom: 40px; right: 40px;
+    z-index: 10;
+    text-align: center;
+    opacity: 0.85;
+  }
+  .seal {
+    width: 64px; height: 64px;
+    background: var(--lava-deep);
+    color: #fff5e8;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: 14px;
+    line-height: 1.1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    place-items: center;
+    padding: 8px;
+    border: 2px solid var(--lava-deep);
+    box-shadow:
+      0 0 16px rgba(201, 36, 16, 0.5),
+      inset 0 0 8px rgba(0, 0, 0, 0.3);
+    margin-bottom: 6px;
+    transform: rotate(-4deg);
+    letter-spacing: 0;
+  }
+  .seal span {
+    font-weight: 900;
+  }
+  .seal-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-dim);
+    letter-spacing: 0.3em;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="stars"></div>
+  <div class="grid-floor"></div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark"><span>冶</span></div>
+        <div>
+          <div class="brand-name"><b>AgentForge</b></div>
+          <div class="brand-sub">星 · 工 · 厂</div>
+        </div>
+      </div>
+      <nav>
+        <a href="#">炉房</a>
+        <a href="#">剑录</a>
+        <a href="#">投料</a>
+        <a href="#">炉师</a>
+      </nav>
+      <div class="status-pill">炉温 1247°C · ONLINE</div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="seal-tag">欧 · 冶 · 在 · 炉</div>
+      <h1 class="hero-title">
+        <span class="l1">星辰熔炉</span>
+        <span class="l2">A G E N T   F O R G E</span>
+      </h1>
+      <p class="hero-poem">以<b>星</b>为铁　以<b>语</b>为锤<br>言出剑成　铸为我器</p>
+      <p class="hero-desc">
+        AgentForge 是对话驱动的 AI Agent 锻造平台。你说出目标，欧冶子炉师为你采星入炉、锤打淬铭，七息之间，一柄属于你的 Agent 出炉。
+      </p>
+      <div class="cta-row">
+        <button class="btn-primary">投料入炉 →</button>
+        <button class="btn-ghost">查看剑录</button>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <!-- 蓝图技术层 (A 风格) -->
+      <div class="bp-corner tl"></div>
+      <div class="bp-corner tr"></div>
+      <div class="bp-corner bl"></div>
+      <div class="bp-corner br"></div>
+      <div class="bp-axis x">X · 0 → 420mm</div>
+      <div class="bp-axis y">Y · ↑</div>
+      <div class="bp-arc"></div>
+      <div class="bp-arc-2"></div>
+      <div class="bp-tick-ring">
+        <svg viewBox="0 0 460 460">
+          <g stroke="rgba(58, 255, 213, 0.35)" stroke-width="1">
+            <!-- 24 ticks around circle -->
+            <line x1="230" y1="10" x2="230" y2="22"/>
+            <line x1="230" y1="438" x2="230" y2="450"/>
+            <line x1="10" y1="230" x2="22" y2="230"/>
+            <line x1="438" y1="230" x2="450" y2="230"/>
+          </g>
+          <g stroke="rgba(58, 255, 213, 0.18)" stroke-width="1">
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(15 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(30 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(45 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(60 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(75 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(105 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(120 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(135 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(150 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(165 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(195 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(210 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(225 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(240 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(255 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(285 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(300 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(315 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(330 230 230)"/>
+            <line x1="230" y1="14" x2="230" y2="20" transform="rotate(345 230 230)"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="blueprint">
+        <div class="bp-callout bp-1">
+          <span class="dot"></span>
+          <span class="line"></span>
+          <span class="label">炉口 · <b>INTAKE</b> · 1247°C</span>
+        </div>
+        <div class="bp-callout bp-2">
+          <span class="dot"></span>
+          <span class="line"></span>
+          <span class="label">外圈 · <b>RING-OUT</b> · ⌀420</span>
+        </div>
+        <div class="bp-callout bp-3">
+          <span class="dot"></span>
+          <span class="line"></span>
+          <span class="label">核心 · <b>CORE</b> · ⌀180</span>
+        </div>
+        <div class="bp-callout bp-4">
+          <span class="dot"></span>
+          <span class="line"></span>
+          <span class="label">淬层 · <b>QUENCH</b> · η=0.98</span>
+        </div>
+        <div class="bp-callout bp-5">
+          <div class="bp-dim">
+            <span class="tick"></span>
+            <span class="span-bar"></span>
+            <span class="tick"></span>
+            <span style="margin-left: 8px; color: var(--star-gold);">420 MM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="forge">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="core"></div>
+        <div class="core-trigram">
+          <svg viewBox="0 0 200 200" fill="none">
+            <g stroke="rgba(255, 184, 0, 0.6)" stroke-width="1.5">
+              <!-- 8 trigram marks around outer ring -->
+              <g transform="translate(100, 12)"><rect x="-12" y="0" width="24" height="2"/><rect x="-12" y="5" width="24" height="2"/><rect x="-12" y="10" width="24" height="2"/></g>
+              <g transform="translate(162, 38) rotate(45 0 0)"><rect x="-12" y="0" width="24" height="2"/><rect x="-12" y="5" width="24" height="2"/><rect x="-12" y="10" width="10" height="2"/><rect x="2" y="10" width="10" height="2"/></g>
+              <g transform="translate(188, 100) rotate(90 0 0)"><rect x="-12" y="0" width="24" height="2"/><rect x="-12" y="5" width="10" height="2"/><rect x="2" y="5" width="10" height="2"/><rect x="-12" y="10" width="24" height="2"/></g>
+              <g transform="translate(162, 162) rotate(135 0 0)"><rect x="-12" y="0" width="10" height="2"/><rect x="2" y="0" width="10" height="2"/><rect x="-12" y="5" width="24" height="2"/><rect x="-12" y="10" width="24" height="2"/></g>
+              <g transform="translate(100, 188) rotate(180 0 0)"><rect x="-12" y="0" width="10" height="2"/><rect x="2" y="0" width="10" height="2"/><rect x="-12" y="5" width="10" height="2"/><rect x="2" y="5" width="10" height="2"/><rect x="-12" y="10" width="24" height="2"/></g>
+              <g transform="translate(38, 162) rotate(225 0 0)"><rect x="-12" y="0" width="24" height="2"/><rect x="-12" y="5" width="10" height="2"/><rect x="2" y="5" width="10" height="2"/><rect x="-12" y="10" width="10" height="2"/><rect x="2" y="10" width="10" height="2"/></g>
+              <g transform="translate(12, 100) rotate(270 0 0)"><rect x="-12" y="0" width="10" height="2"/><rect x="2" y="0" width="10" height="2"/><rect x="-12" y="5" width="24" height="2"/><rect x="-12" y="10" width="10" height="2"/><rect x="2" y="10" width="10" height="2"/></g>
+              <g transform="translate(38, 38) rotate(315 0 0)"><rect x="-12" y="0" width="10" height="2"/><rect x="2" y="0" width="10" height="2"/><rect x="-12" y="5" width="10" height="2"/><rect x="2" y="5" width="10" height="2"/><rect x="-12" y="10" width="10" height="2"/><rect x="2" y="10" width="10" height="2"/></g>
+            </g>
+          </svg>
+        </div>
+        <div class="sword-flash"></div>
+      </div>
+
+      <div class="embers"></div>
+    </div>
+  </section>
+
+  <!-- 锻造五序 -->
+  <section class="pipeline">
+    <div class="section-tag">F O R G I N G · F I V E · S T A G E S</div>
+    <h2 class="section-title">锻造<span>五序</span></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-node">
+          <div class="step-node-glyph">采</div>
+          <div class="step-idx">1</div>
+        </div>
+        <div class="step-name">采星</div>
+        <div class="step-en">INTENT</div>
+        <div class="step-desc">自语而出，意如金石。LLM 提炼目标。</div>
+      </div>
+      <div class="step">
+        <div class="step-node">
+          <div class="step-node-glyph">入</div>
+          <div class="step-idx">2</div>
+        </div>
+        <div class="step-name">入炉</div>
+        <div class="step-en">CLARIFY</div>
+        <div class="step-desc">多轮追问，去渣留精。</div>
+      </div>
+      <div class="step">
+        <div class="step-node">
+          <div class="step-node-glyph">锤</div>
+          <div class="step-idx">3</div>
+        </div>
+        <div class="step-name">锤打</div>
+        <div class="step-en">GENERATE</div>
+        <div class="step-desc">配 Prompt、择工具、定权限。</div>
+      </div>
+      <div class="step">
+        <div class="step-node">
+          <div class="step-node-glyph">淬</div>
+          <div class="step-idx">4</div>
+        </div>
+        <div class="step-name">淬火</div>
+        <div class="step-en">DEPLOY</div>
+        <div class="step-desc">部署飞书 / Web，入水成形。</div>
+      </div>
+      <div class="step">
+        <div class="step-node">
+          <div class="step-node-glyph">铭</div>
+          <div class="step-idx">5</div>
+        </div>
+        <div class="step-name">铭剑</div>
+        <div class="step-en">EVOLVE</div>
+        <div class="step-desc">立名归档，持续进化。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 欧冶子签章 -->
+  <div class="signature">
+    <div class="seal">
+      <span>欧</span><span>冶</span>
+      <span>之</span><span>炉</span>
+    </div>
+    <div class="seal-label">OU · YE · ZI</div>
+  </div>
+</div>
+
+<script>
+  // 生成火星粒子
+  const embers = document.querySelector('.embers');
+  for (let i = 0; i < 50; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = Math.random() * 100 + '%';
+    e.style.bottom = '-' + (Math.random() * 20) + 'px';
+    e.style.animationDuration = (4 + Math.random() * 6) + 's';
+    e.style.animationDelay = (Math.random() * 8) + 's';
+    const drift = (Math.random() - 0.5) * 200;
+    e.style.setProperty('--drift', drift + 'px');
+    e.style.width = (2 + Math.random() * 4) + 'px';
+    e.style.height = e.style.width;
+    embers.appendChild(e);
+  }
+</script>
+</body>
+</html>

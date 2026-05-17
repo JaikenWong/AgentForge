@@ -1,0 +1,62 @@
+server:
+  port: 3000
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/agentforge_user?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  datasource-pg:
+    url: jdbc:postgresql://localhost:5433/agentforge
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+
+  # Redis
+  data:
+    redis:
+      url: redis://localhost:6379
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/mysql
+    baseline-on-migrate: true
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET:AgentForge2026SecretKeyForJWTTokenGenerationMustBe256Bits}
+  expiration: 86400000
+
+# LLM
+llm:
+  base-url: ${LLM_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/anthropic}
+  api-key: ${LLM_API_KEY:}
+  model: ${LLM_MODEL:astron-code-latest}
+
+# 飞书 OAuth（浏览器网页登录）
+feishu:
+  app-id: ${FEISHU_APP_ID:}
+  app-secret: ${FEISHU_APP_SECRET:}
+  redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:5173/auth/feishu/callback}
+  # 可选：空格分隔的 scope，需在飞书后台申请；留空则仅基础登录
+  scope: ${FEISHU_SCOPE:}
+
+logging:
+  level:
+    com.agentforge: DEBUG

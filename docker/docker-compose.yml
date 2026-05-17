@@ -1,0 +1,82 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: agentforge-mysql
+    networks:
+      - agentforge
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: agentforge_user
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: agentforge-redis
+    networks:
+      - agentforge
+    ports:
+      - "6379:6379"
+    command: redis-server --notify-keyspace-events Ex --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ../apps/server
+      dockerfile: Dockerfile
+    container_name: agentforge-server
+    networks:
+      - agentforge
+    ports:
+      - "3000:3000"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/agentforge_user?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATA_REDIS_URL: redis://redis:6379
+      JWT_SECRET: AgentForge2026SecretKeyForJWTTokenGenerationMustBe256Bits
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://maas-coding-api.cn-huabei-1.xf-yun.com/anthropic}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-astron-code-latest}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:5173/auth/feishu/callback}
+      FEISHU_SCOPE: ${FEISHU_SCOPE:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: agentforge-web
+    networks:
+      - agentforge
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+networks:
+  agentforge:
+    name: agentforge
+
+volumes:
+  mysql_data:
+  redis_data:
