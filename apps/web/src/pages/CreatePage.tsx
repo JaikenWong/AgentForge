@@ -10,10 +10,22 @@ interface Message {
 }
 
 interface ClarifyResult {
+  intent: string;
   goal: string;
   confidence: number;
   questions: string[];
   extracted: Record<string, string>;
+  reply?: string;
+}
+
+interface GenerateResult {
+  name: string;
+  description: string;
+  prompt: string;
+  config?: string;
+  agentId?: number;
+  success?: boolean;
+  error?: string;
 }
 
 interface AgentPreview {
@@ -31,7 +43,7 @@ interface ConversationDto {
 const WELCOME: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: '你好！我是 AgentForge。请告诉我你想创建什么样的 Agent？\n\n例如：\n• "我要一个回答售前问题的飞书机器人"\n• "帮我做个网站智能客服，能识别意图并升级到人工"',
+  content: '你好！我是 AgentForge。\n\n你可以先随便聊聊；当你想创建 Agent 时，直接说例如：\n• "帮我做一个回答售前问题的飞书机器人"\n• "我要一个网站智能客服，能升级到人工"',
 };
 
 export default function CreatePage() {
@@ -90,30 +102,56 @@ export default function CreatePage() {
           history,
         });
 
-        if (result.questions.length === 0) {
-          setStep('confirm');
-          const msg = `我理解了你的需求：\n\n**目标**：${result.goal}\n\n正在生成 Agent 配置...`;
-          addMessage('assistant', msg, 'confirmation');
-          persistMessage('assistant', msg);
+        if (result.intent !== 'CREATE_AGENT') {
+          const reply =
+            result.reply?.trim() ||
+            '好的。当你准备创建 Agent 时，可以说「帮我做一个…机器人」。';
+          addMessage('assistant', reply);
+          persistMessage('assistant', reply);
+          return;
+        }
 
-          try {
-            const generated = await api.post<AgentPreview>('/generator/generate', {
-              goal: result.goal,
-              extracted: result.extracted,
-            });
-            setAgentPreview(generated);
-            const reply = `Agent 已生成！\n\n**名称**：${generated.name}\n**描述**：${generated.description}\n\n请确认是否创建此 Agent？`;
-            addMessage('assistant', reply, 'result');
-            persistMessage('assistant', reply);
-          } catch (genErr) {
-            const err = `生成失败：${genErr instanceof Error ? genErr.message : '未知错误'}，请重试。`;
-            addMessage('assistant', err);
-            persistMessage('assistant', err);
-          }
-        } else {
+        if (result.questions.length > 0) {
           const q = result.questions[0];
           addMessage('assistant', q, 'question');
           persistMessage('assistant', q);
+          return;
+        }
+
+        setStep('confirm');
+        const msg = `我理解了你的需求：\n\n**目标**：${result.goal}\n\n正在生成 Agent 配置...`;
+        addMessage('assistant', msg, 'confirmation');
+        persistMessage('assistant', msg);
+
+        try {
+          const generated = await api.post<GenerateResult>('/generate', {
+            prompt: result.goal,
+          });
+          if (generated.success === false || generated.error) {
+            throw new Error(generated.error || '生成失败');
+          }
+          let tools: string[] = [];
+          try {
+            const cfg = JSON.parse(generated.config || '{}');
+            if (Array.isArray(cfg.tools)) tools = cfg.tools;
+          } catch {
+            /* ignore */
+          }
+          const preview: AgentPreview = {
+            name: generated.name,
+            description: generated.description,
+            system_prompt: generated.prompt,
+            tools,
+          };
+          setAgentPreview(preview);
+          const reply = `Agent 已生成！\n\n**名称**：${preview.name}\n**描述**：${preview.description}\n\n请确认是否创建此 Agent？`;
+          addMessage('assistant', reply, 'result');
+          persistMessage('assistant', reply);
+        } catch (genErr) {
+          setStep('clarify');
+          const err = `生成失败：${genErr instanceof Error ? genErr.message : '未知错误'}，请重试。`;
+          addMessage('assistant', err);
+          persistMessage('assistant', err);
         }
       }
     } catch (err) {
@@ -135,6 +173,7 @@ export default function CreatePage() {
         description: agentPreview.description,
         prompt: agentPreview.system_prompt,
         config,
+        status: 'active',
       });
       if (conversationId) {
         await api.post(`/conversations/${conversationId}/attach-agent`, { agentUuid: created.uuid });

@@ -105,6 +105,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <Link to="/create" className="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-cyan-400 hover:bg-[#1f1f2e] transition-colors">
                     创建 Agent
                   </Link>
+                  <Link to="/templates" className="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-cyan-400 hover:bg-[#1f1f2e] transition-colors">
+                    模板库
+                  </Link>
                   <Link to="/conversations" className="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-cyan-400 hover:bg-[#1f1f2e] transition-colors">
                     对话历史
                   </Link>

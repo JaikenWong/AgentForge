@@ -9,13 +9,14 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("agents")
-public class Agent {
+@TableName("agent_execution_logs")
+public class AgentExecutionLog {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String uuid;
+    @TableField("agent_id")
+    private Long agentId;
 
     @TableField("user_id")
     private Long userId;
@@ -23,16 +24,22 @@ public class Agent {
     @TableField("tenant_id")
     private Long tenantId;
 
-    private String name;
-    private String description;
-    private String prompt;
-    private String config;
+    private String channel;
 
-    private String status = "draft";
+    @TableField("input_text")
+    private String inputText;
+
+    @TableField("output_text")
+    private String outputText;
+
+    private String status;
+
+    @TableField("latency_ms")
+    private Integer latencyMs;
+
+    @TableField("error_message")
+    private String errorMessage;
 
     @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    @TableField("updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
 }

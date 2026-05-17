@@ -1,45 +1,41 @@
 package com.agentforge.intent;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
-@Table(name = "conversations")
 @Data
+@TableName("conversations")
 public class Conversation {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(name = "user_id")
+    @TableField("user_id")
     private Long userId;
 
-    @Column(name = "tenant_id")
+    @TableField("tenant_id")
     private Long tenantId;
 
-    private String type = "create_agent"; // create_agent, chat
+    private String type = "create_agent";
 
-    private String status = "active"; // active, completed, abandoned
+    private String status = "active";
 
-    @Column(name = "agent_id")
+    @TableField("agent_id")
     private String agentId;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "updated_at")
+    @TableField("updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    @TableField(exist = false)
     private List<ConversationMessage> messages = new ArrayList<>();
-
-    public void addMessage(ConversationMessage message) {
-        messages.add(message);
-        message.setConversation(this);
-    }
 }

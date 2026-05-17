@@ -1,8 +1,8 @@
 package com.agentforge.user;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +16,13 @@ import java.util.UUID;
 @Transactional
 public class InvitationService {
 
-    private final InvitationRepository invitationRepository;
-    private final UserRepository userRepository;
+    private final InvitationMapper invitationMapper;
 
     @Transactional(readOnly = true)
     public List<Invitation> getInvitations(Long tenantId) {
-        return invitationRepository.findByTenantId(tenantId);
+        return invitationMapper.selectList(
+            Wrappers.<Invitation>lambdaQuery().eq(Invitation::getTenantId, tenantId)
+        );
     }
 
     public Invitation createInvitation(Long tenantId, Long createdBy, String description, int daysValid) {
@@ -33,31 +34,39 @@ public class InvitationService {
         invitation.setExpiresAt(LocalDateTime.now().plusDays(daysValid));
         invitation.setCreatedAt(LocalDateTime.now());
 
-        return invitationRepository.save(invitation);
+        invitationMapper.insert(invitation);
+        return invitation;
     }
 
     @Transactional(readOnly = true)
     public Invitation validateInvitation(String code) {
-        return invitationRepository.findByCode(code)
-            .filter(inv -> inv.getExpiresAt().isAfter(LocalDateTime.now()))
-            .orElseThrow(() -> new RuntimeException("Invalid or expired invitation"));
+        Invitation invitation = invitationMapper.selectOne(
+            Wrappers.<Invitation>lambdaQuery().eq(Invitation::getCode, code)
+        );
+        if (invitation == null || invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invalid or expired invitation");
+        }
+        return invitation;
     }
 
     public Invitation useInvitation(String code, Long userId) {
         Invitation invitation = validateInvitation(code);
         invitation.setUsedBy(userId);
         invitation.setUsedAt(LocalDateTime.now());
-        return invitationRepository.save(invitation);
+        invitationMapper.updateById(invitation);
+        return invitation;
     }
 
     public void deleteInvitation(Long id, Long tenantId) {
-        Invitation invitation = invitationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Invitation not found"));
+        Invitation invitation = invitationMapper.selectById(id);
+        if (invitation == null) {
+            throw new RuntimeException("Invitation not found");
+        }
 
         if (!invitation.getTenantId().equals(tenantId)) {
             throw new RuntimeException("Not authorized to delete this invitation");
         }
 
-        invitationRepository.delete(invitation);
+        invitationMapper.deleteById(id);
     }
 }

@@ -1,6 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import AgentChatPanel from '../components/AgentChatPanel';
+import AgentFeishuDeploy from '../components/AgentFeishuDeploy';
+
+interface ExecutionLog {
+  id: number;
+  channel: string;
+  inputText: string;
+  outputText?: string;
+  status: string;
+  latencyMs?: number;
+  errorMessage?: string;
+  createdAt: string;
+}
 
 interface Agent {
   id: number;
@@ -28,9 +41,19 @@ const STATUS_STYLES: Record<string, { dot: string; text: string; bg: string; bor
 export default function AgentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [agent, setAgent] = useState<Agent | null>(null);
+  const [logs, setLogs] = useState<ExecutionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const loadLogs = useCallback(async (agentId: string) => {
+    try {
+      const data = await api.get<ExecutionLog[]>(`/agents/${agentId}/logs?limit=20`);
+      setLogs(data);
+    } catch {
+      setLogs([]);
+    }
+  }, []);
 
   useEffect(() => {
     if (id) loadAgent(id);
@@ -40,6 +63,7 @@ export default function AgentDetailPage() {
     try {
       const data = await api.get<Agent>(`/agents/${agentId}`);
       setAgent(data);
+      await loadLogs(agentId);
     } catch (err: any) {
       setError(err.message || '加载失败');
     } finally {
@@ -60,6 +84,16 @@ export default function AgentDetailPage() {
       setAgent(updated);
     } catch (err: any) {
       alert(err.message || '操作失败');
+    }
+  };
+
+  const cloneAgent = async () => {
+    if (!id) return;
+    try {
+      const cloned = await api.post<Agent>(`/agents/${id}/clone`);
+      navigate(`/agents/${cloned.id}`);
+    } catch (err: any) {
+      alert(err.message || '克隆失败');
     }
   };
 
@@ -135,12 +169,62 @@ export default function AgentDetailPage() {
             </button>
           )}
           <button
+            onClick={cloneAgent}
+            className="px-4 py-2 rounded-lg border border-cyan-500/40 text-cyan-400 text-sm hover:bg-cyan-500/10"
+          >
+            克隆
+          </button>
+          <Link
+            to={`/embed/${id}`}
+            className="px-4 py-2 rounded-lg border border-purple-500/40 text-purple-300 text-sm hover:bg-purple-500/10"
+          >
+            Widget
+          </Link>
+          <button
             onClick={remove}
             className="px-4 py-2 rounded-lg border border-red-500/40 text-red-400 text-sm hover:bg-red-500/10"
           >
             删除
           </button>
         </div>
+      </div>
+
+      <AgentChatPanel
+        agentId={agent.id}
+        agentName={agent.name}
+        disabled={agent.status === 'archived'}
+      />
+
+      <AgentFeishuDeploy
+        agentId={agent.id}
+        archived={agent.status === 'archived'}
+        onDeployed={() => id && loadAgent(id)}
+      />
+
+      <div className="rounded-xl border border-[#1f1f2e] bg-[#11111a]/60 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-200">执行日志</h2>
+          <button type="button" onClick={() => id && loadLogs(id)} className="text-xs text-cyan-400 hover:underline">
+            刷新
+          </button>
+        </div>
+        {logs.length === 0 ? (
+          <p className="text-sm text-gray-500">暂无执行记录，试聊后将在此留痕。</p>
+        ) : (
+          <ul className="space-y-3 max-h-64 overflow-y-auto">
+            {logs.map((log) => (
+              <li key={log.id} className="text-xs border border-[#1f1f2e] rounded-lg p-3 bg-[#0a0a12]">
+                <div className="flex justify-between text-gray-500 mb-1">
+                  <span>{log.channel} · {log.status}</span>
+                  <span>{log.latencyMs != null ? `${log.latencyMs}ms` : ''}</span>
+                </div>
+                <p className="text-gray-400 truncate">→ {log.inputText}</p>
+                {log.outputText && <p className="text-gray-500 truncate mt-1">← {log.outputText}</p>}
+                {log.errorMessage && <p className="text-red-400 mt-1">{log.errorMessage}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

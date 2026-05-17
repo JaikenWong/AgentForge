@@ -10,6 +10,8 @@ import RegisterPage from './pages/RegisterPage';
 import FeishuCallbackPage from './pages/FeishuCallbackPage';
 import ConversationsPage from './pages/ConversationsPage';
 import AdminPage from './pages/AdminPage';
+import TemplatesPage from './pages/TemplatesPage';
+import EmbedAgentPage from './pages/EmbedAgentPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const location = useLocation();
@@ -27,6 +29,8 @@ function AppRoutes() {
       <Route path="/create" element={<RequireAuth><CreatePage /></RequireAuth>} />
       <Route path="/agents" element={<RequireAuth><AgentListPage /></RequireAuth>} />
       <Route path="/agents/:id" element={<RequireAuth><AgentDetailPage /></RequireAuth>} />
+      <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
+      <Route path="/embed/:id" element={<RequireAuth><EmbedAgentPage /></RequireAuth>} />
       <Route path="/conversations" element={<RequireAuth><ConversationsPage /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
     </Routes>

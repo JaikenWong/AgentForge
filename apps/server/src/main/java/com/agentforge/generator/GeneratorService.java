@@ -1,9 +1,8 @@
 package com.agentforge.generator;
 
-import com.agentforge.agent.Agent;
-import com.agentforge.agent.AgentRepository;
-import com.agentforge.intent.IntentService;
 import com.agentforge.llm.LlmClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,16 +16,18 @@ import java.util.Map;
 public class GeneratorService {
 
     private final LlmClient llmClient;
-    private final AgentRepository agentRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String GENERATOR_SYSTEM_PROMPT = """
-        你是一个智能体生成引擎。根据用户需求生成完整的智能体配置。
+        你是智能体生成引擎。根据用户需求生成 Agent 配置。
 
-        请以JSON格式输出：
+        必须只输出一个 JSON 对象，不要 markdown，不要代码块，不要任何前后说明文字。
+
+        格式：
         {
           "name": "智能体名称",
-          "description": "智能体描述",
-          "prompt": "智能体核心提示词",
+          "description": "一两句话描述",
+          "prompt": "完整系统提示词，含角色、目标、流程、输出格式",
           "config": {
             "temperature": 0.7,
             "max_tokens": 4096,
@@ -34,93 +35,84 @@ public class GeneratorService {
           }
         }
 
-        要求：
-        1. name: 简洁明了的名称
-        2. description: 1-2句话描述智能体功能
-        3. prompt: 详细的系统提示词，包含角色定义、任务目标、工作流程、输出格式
-        4. config: JSON配置对象
+        要求：name、description、prompt 均不能为空字符串。
         """;
 
     public GeneratorResult generateAgent(Long userId, Long tenantId, String userPrompt) {
-        String response = llmClient.chat(GENERATOR_SYSTEM_PROMPT,
-            List.of(Map.of("role", "user", "content", "生成智能体: " + userPrompt)),
-            2000);
+        if (userPrompt == null || userPrompt.isBlank()) {
+            return GeneratorResult.error("prompt 不能为空");
+        }
 
         try {
+            String response = llmClient.chat(
+                GENERATOR_SYSTEM_PROMPT,
+                List.of(Map.of("role", "user", "content", "用户需求: " + userPrompt)),
+                2000
+            );
+
             String json = llmClient.extractJSON(response);
-            log.debug("Generator result: {}", json);
+            log.debug("Generator raw json: {}", json);
 
-            GeneratorResult result = parseGeneratorResult(json);
-            if (result != null) {
-                // Save agent to database
-                Agent agent = new Agent();
-                agent.setUuid(java.util.UUID.randomUUID());
-                agent.setTenantId(tenantId);
-                agent.setName(result.getName());
-                agent.setDescription(result.getDescription());
-                agent.setPrompt(result.getPrompt());
-                agent.setConfig(result.getConfig());
-                agent.setStatus("draft");
-
-                agentRepository.save(agent);
-                result.setAgentId(agent.getId());
+            if (json == null || json.isBlank()) {
+                return GeneratorResult.error("模型未返回有效 JSON，请重试");
             }
 
+            GeneratorResult result = parseGeneratorResult(json);
+            validateResult(result);
+            result.setSuccess(true);
             return result;
         } catch (Exception e) {
             log.error("Failed to parse generator result: {}", e.getMessage());
-            return GeneratorResult.error(e.getMessage());
+            return GeneratorResult.error("生成配置失败: " + e.getMessage());
         }
     }
 
-    private GeneratorResult parseGeneratorResult(String json) {
+    private GeneratorResult parseGeneratorResult(String json) throws Exception {
+        JsonNode root = objectMapper.readTree(json);
         GeneratorResult result = new GeneratorResult();
-
-        // Simple JSON parsing
-        if (json.contains("\"name\":")) {
-            result.setName(extractString(json, "name"));
-        }
-        if (json.contains("\"description\":")) {
-            result.setDescription(extractString(json, "description"));
-        }
-        if (json.contains("\"prompt\":")) {
-            result.setPrompt(extractString(json, "prompt"));
-        }
-        if (json.contains("\"config\":")) {
-            result.setConfig(extractObject(json, "config"));
-        }
-
+        result.setName(textField(root, "name"));
+        result.setDescription(textField(root, "description"));
+        result.setPrompt(textField(root, "prompt"));
+        result.setConfig(configField(root));
         return result;
     }
 
-    private String extractString(String json, String key) {
-        int start = json.indexOf("\"" + key + "\":") + key.length() + 4;
-        int end = json.indexOf("\"", start);
-        if (end > start) {
-            return json.substring(start, end);
+    private String textField(JsonNode root, String key) {
+        JsonNode node = root.get(key);
+        if (node == null || node.isNull()) {
+            return "";
         }
-        return "";
+        return node.asText("").trim();
     }
 
-    private String extractObject(String json, String key) {
-        int start = json.indexOf("\"" + key + "\":");
-        if (start < 0) return "{}";
-        start = json.indexOf("{", start);
-        if (start < 0) return "{}";
-
-        int braceCount = 1;
-        int end = start + 1;
-        while (end < json.length() && braceCount > 0) {
-            char c = json.charAt(end);
-            if (c == '{') braceCount++;
-            else if (c == '}') braceCount--;
-            end++;
+    private String configField(JsonNode root) {
+        JsonNode config = root.get("config");
+        if (config == null || config.isNull()) {
+            return "{\"tools\":[]}";
         }
-
-        if (braceCount == 0) {
-            return json.substring(start, end);
+        if (config.isTextual()) {
+            return config.asText();
         }
-        return "{}";
+        try {
+            return objectMapper.writeValueAsString(config);
+        } catch (Exception e) {
+            return "{\"tools\":[]}";
+        }
+    }
+
+    private void validateResult(GeneratorResult result) {
+        if (result.getName() == null || result.getName().isBlank()) {
+            throw new IllegalArgumentException("缺少 name 字段");
+        }
+        if (result.getDescription() == null || result.getDescription().isBlank()) {
+            throw new IllegalArgumentException("缺少 description 字段");
+        }
+        if (result.getPrompt() == null || result.getPrompt().isBlank()) {
+            throw new IllegalArgumentException("缺少 prompt 字段");
+        }
+        if (result.getConfig() == null || result.getConfig().isBlank()) {
+            result.setConfig("{\"tools\":[]}");
+        }
     }
 
     @lombok.Data
@@ -130,7 +122,7 @@ public class GeneratorService {
         private String prompt;
         private String config;
         private Long agentId;
-        private boolean success;
+        private boolean success = false;
         private String error;
 
         public static GeneratorResult error(String error) {

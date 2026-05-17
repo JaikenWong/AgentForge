@@ -1,32 +1,39 @@
 package com.agentforge.user;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
 
     public User findByUsername(String username) {
-        return userRepository.findByUsername(username).orElse(null);
+        return userMapper.selectOne(
+            Wrappers.<User>lambdaQuery().eq(User::getUsername, username)
+        );
     }
 
     public User findById(Long id) {
-        return userRepository.findById(id).orElse(null);
+        return userMapper.selectById(id);
     }
 
     public User findByOAuthId(String oauthId) {
-        return userRepository.findByOauthId(oauthId);
+        return userMapper.selectOne(
+            Wrappers.<User>lambdaQuery().eq(User::getOauthId, oauthId)
+        );
     }
 
     public User findByOAuthProviderAndId(String provider, String oauthId) {
-        return userRepository.findByOauthProviderAndOauthId(provider, oauthId).orElse(null);
+        return userMapper.selectOne(
+            Wrappers.<User>lambdaQuery()
+                .eq(User::getOauthProvider, provider)
+                .eq(User::getOauthId, oauthId)
+        );
     }
 
     public User create(String username, String rawPassword, String displayName, Long tenantId) {
@@ -37,7 +44,8 @@ public class UserService {
         user.setTenantId(tenantId != null ? tenantId : 1L);
         user.setRole("user");
         user.setStatus("active");
-        return userRepository.save(user);
+        userMapper.insert(user);
+        return user;
     }
 
     public User createOAuthUser(String openId, String unionId, String displayName, String email, String avatarUrl) {
@@ -51,7 +59,8 @@ public class UserService {
         user.setTenantId(1L);
         user.setRole("user");
         user.setStatus("active");
-        return userRepository.save(user);
+        userMapper.insert(user);
+        return user;
     }
 
     public boolean checkPassword(User user, String rawPassword) {

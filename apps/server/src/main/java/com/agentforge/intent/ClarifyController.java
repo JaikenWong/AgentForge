@@ -31,18 +31,18 @@ public class ClarifyController {
         String conversationHistory = buildConversationHistory(history);
         IntentService.IntentResult intent = intentService.analyzeIntent(request.getMessage(), conversationHistory);
 
+        if ("CREATE_AGENT".equals(intent.getIntent())) {
+            ClarifyResult result = intentService.clarifyForCreateAgent(request.getMessage(), history);
+            return ResponseEntity.ok(result);
+        }
+
         ClarifyResult out = new ClarifyResult();
-        out.setGoal(request.getMessage());
+        out.setIntent(intent.getIntent());
+        out.setGoal("");
         out.setConfidence(intent.getConfidence());
         out.setExtracted(new HashMap<>());
-
-        List<String> questions = new ArrayList<>();
-        if (intent.isClarificationNeeded() && intent.getClarificationQuestion() != null) {
-            questions.add(intent.getClarificationQuestion());
-        } else if (intent.getConfidence() < 0.7) {
-            questions.add("请补充更多细节：目标用户、使用场景、希望接入的渠道？");
-        }
-        out.setQuestions(questions);
+        out.setQuestions(List.of());
+        out.setReply(intentService.chatReply(request.getMessage(), history, intent.getIntent()));
         return ResponseEntity.ok(out);
     }
 
@@ -74,9 +74,12 @@ public class ClarifyController {
 
     @Data
     public static class ClarifyResult {
+        private String intent;
         private String goal;
         private double confidence;
         private List<String> questions;
         private Map<String, String> extracted;
+        /** 非 CREATE_AGENT 时的对话回复 */
+        private String reply;
     }
 }

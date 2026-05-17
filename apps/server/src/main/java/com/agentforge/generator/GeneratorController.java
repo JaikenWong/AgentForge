@@ -20,6 +20,9 @@ public class GeneratorController {
         GeneratorService.GeneratorResult result = generatorService.generateAgent(
             userId, tenantId, request.getPrompt()
         );
+        if (!result.isSuccess()) {
+            return ResponseEntity.badRequest().body(result);
+        }
         return ResponseEntity.ok(result);
     }
 

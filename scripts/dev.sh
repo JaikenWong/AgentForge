@@ -1,27 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# AgentForge 本地开发（当前主栈：Spring + MySQL + Redis + Web）
+set -euo pipefail
 
-echo "🚀 Starting AgentForge development environment..."
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
-# Start Docker services
-echo "📦 Starting PostgreSQL and Redis..."
-cd docker
-docker compose up -d
-cd ..
+echo "Starting AgentForge (Docker)..."
+docker compose -f docker/docker-compose.yml --env-file .env up -d --build
 
-# Wait for services to be ready
-echo "⏳ Waiting for services..."
-sleep 5
-
-# Run Prisma migrations
-echo "🗄️ Running database migrations..."
-cd apps/api
-pnpm prisma migrate dev --name init
-cd ..
-
-# Start all services
-echo "🌟 Starting all services..."
-pnpm dev
-
-echo "✅ AgentForge is ready!"
-echo "   - API: http://localhost:3000"
-echo "   - Web: http://localhost:5173"
+echo ""
+echo "Ready:"
+echo "  Web:     http://localhost:5173"
+echo "  API:     http://localhost:5173/api"
+echo "  Webhook: http://localhost:5173/webhook/feishu"
+echo ""
+echo "飞书公网回调: ./scripts/tunnel.sh  然后配置 PUBLIC_BASE_URL + FEISHU_ENCRYPT_KEY"
+echo "查看 Runtime: GET http://localhost:5173/api/runtime/status (需登录)"

@@ -1,5 +1,6 @@
 package com.agentforge.intent;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,22 +17,28 @@ import java.util.stream.Collectors;
 @Transactional
 public class ConversationService {
 
-    private final ConversationRepository conversationRepository;
-    private final ConversationMessageRepository messageRepository;
+    private final ConversationMapper conversationMapper;
+    private final ConversationMessageMapper messageMapper;
 
     @Transactional(readOnly = true)
     public List<ConversationDto> getConversations(Long userId, Long tenantId) {
-        return conversationRepository.findByUserIdAndTenantId(userId, tenantId)
+        return conversationMapper.selectList(
+                Wrappers.<Conversation>lambdaQuery()
+                    .eq(Conversation::getUserId, userId)
+                    .eq(Conversation::getTenantId, tenantId)
+            )
             .stream()
-            .map(ConversationDto::fromEntity)
+            .map(this::loadMessagesAndToDto)
             .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public ConversationDto getConversation(Long id) {
-        Conversation conv = conversationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Conversation not found"));
-        return ConversationDto.fromEntity(conv);
+        Conversation conv = conversationMapper.selectById(id);
+        if (conv == null) {
+            throw new RuntimeException("Conversation not found");
+        }
+        return loadMessagesAndToDto(conv);
     }
 
     public ConversationDto createConversation(Long userId, Long tenantId, String type) {
@@ -43,43 +50,64 @@ public class ConversationService {
         conv.setCreatedAt(LocalDateTime.now());
         conv.setUpdatedAt(LocalDateTime.now());
 
-        Conversation saved = conversationRepository.save(conv);
-        return ConversationDto.fromEntity(saved);
+        conversationMapper.insert(conv);
+        return ConversationDto.fromEntity(conv);
     }
 
     public ConversationDto addMessage(Long conversationId, String role, String content, String metadata) {
-        Conversation conv = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new RuntimeException("Conversation not found"));
+        Conversation conv = conversationMapper.selectById(conversationId);
+        if (conv == null) {
+            throw new RuntimeException("Conversation not found");
+        }
 
         ConversationMessage msg = new ConversationMessage();
-        msg.setConversation(conv);
+        msg.setConversationId(conversationId);
         msg.setRole(role);
         msg.setContent(content);
         msg.setMetadata(metadata);
         msg.setCreatedAt(LocalDateTime.now());
 
-        messageRepository.save(msg);
-        conv.getMessages().add(msg);
+        messageMapper.insert(msg);
         conv.setUpdatedAt(LocalDateTime.now());
+        conversationMapper.updateById(conv);
 
+        loadMessages(conv);
         return ConversationDto.fromEntity(conv);
     }
 
     public ConversationDto completeConversation(Long id) {
-        Conversation conv = conversationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Conversation not found"));
+        Conversation conv = conversationMapper.selectById(id);
+        if (conv == null) {
+            throw new RuntimeException("Conversation not found");
+        }
         conv.setStatus("completed");
         conv.setUpdatedAt(LocalDateTime.now());
-        conversationRepository.save(conv);
-        return ConversationDto.fromEntity(conv);
+        conversationMapper.updateById(conv);
+        return loadMessagesAndToDto(conv);
     }
 
     public ConversationDto attachAgent(Long id, String agentUuid) {
-        Conversation conv = conversationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Conversation not found"));
+        Conversation conv = conversationMapper.selectById(id);
+        if (conv == null) {
+            throw new RuntimeException("Conversation not found");
+        }
         conv.setAgentId(agentUuid);
         conv.setUpdatedAt(LocalDateTime.now());
-        conversationRepository.save(conv);
+        conversationMapper.updateById(conv);
+        return loadMessagesAndToDto(conv);
+    }
+
+    private void loadMessages(Conversation conv) {
+        List<ConversationMessage> messages = messageMapper.selectList(
+            Wrappers.<ConversationMessage>lambdaQuery()
+                .eq(ConversationMessage::getConversationId, conv.getId())
+                .orderByAsc(ConversationMessage::getCreatedAt)
+        );
+        conv.setMessages(messages);
+    }
+
+    private ConversationDto loadMessagesAndToDto(Conversation conv) {
+        loadMessages(conv);
         return ConversationDto.fromEntity(conv);
     }
 
@@ -128,7 +156,7 @@ public class ConversationService {
         public static MessageDto fromEntity(ConversationMessage msg) {
             MessageDto dto = new MessageDto();
             dto.setId(msg.getId());
-            dto.setConversationId(msg.getConversation().getId());
+            dto.setConversationId(msg.getConversationId());
             dto.setRole(msg.getRole());
             dto.setContent(msg.getContent());
             dto.setMetadata(msg.getMetadata());

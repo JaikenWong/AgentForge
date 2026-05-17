@@ -1,30 +1,29 @@
 package com.agentforge.intent;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "conversation_messages")
 @Data
+@TableName("conversation_messages")
 public class ConversationMessage {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conversation_id")
-    private Conversation conversation;
+    @TableField("conversation_id")
+    private Long conversationId;
 
-    private String role; // user, assistant
+    private String role;
 
     private String content;
 
-    @Column(columnDefinition = "JSON")
     private String metadata;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }

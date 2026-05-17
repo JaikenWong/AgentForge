@@ -1,4 +1,4 @@
-package com.agentforge.user;
+package com.agentforge.runtime;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -9,31 +9,23 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("invitations")
-public class Invitation {
+@TableName("agent_channels")
+public class AgentChannel {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String code;
+    @TableField("agent_id")
+    private Long agentId;
 
     @TableField("tenant_id")
     private Long tenantId;
 
-    @TableField("created_by")
-    private Long createdBy;
+    private String channel;
 
-    @TableField("used_by")
-    private Long usedBy;
-
-    @TableField("expires_at")
-    private LocalDateTime expiresAt;
-
-    @TableField("used_at")
-    private LocalDateTime usedAt;
+    @TableField("chat_id")
+    private String chatId;
 
     @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    private String description;
 }

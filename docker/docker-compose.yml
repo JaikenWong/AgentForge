@@ -55,6 +55,8 @@ services:
       FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
       FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:5173/auth/feishu/callback}
       FEISHU_SCOPE: ${FEISHU_SCOPE:-}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     depends_on:
       mysql:
         condition: service_healthy

@@ -10,27 +10,10 @@ spring:
     hikari:
       maximum-pool-size: 10
 
-  datasource-pg:
-    url: jdbc:postgresql://localhost:5433/agentforge
-    username: postgres
-    password: password
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-
   # Redis
   data:
     redis:
       url: redis://localhost:6379
-
-  # JPA
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
 
   # Flyway
   flyway:
@@ -38,14 +21,26 @@ spring:
     locations: classpath:db/migration/mysql
     baseline-on-migrate: true
 
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+# 公网访问根 URL（ngrok / 生产域名），用于展示飞书 Webhook 完整地址
+app:
+  public-base-url: ${PUBLIC_BASE_URL:}
+
 # JWT
 jwt:
   secret: ${JWT_SECRET:AgentForge2026SecretKeyForJWTTokenGenerationMustBe256Bits}
   expiration: 86400000
 
-# LLM
+# LLM（讯飞 MaaS：/anthropic → Anthropic 协议；/v2 → OpenAI 协议）
 llm:
-  base-url: ${LLM_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/anthropic}
+  base-url: ${LLM_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/v2}
   api-key: ${LLM_API_KEY:}
   model: ${LLM_MODEL:astron-code-latest}
 
@@ -54,8 +49,9 @@ feishu:
   app-id: ${FEISHU_APP_ID:}
   app-secret: ${FEISHU_APP_SECRET:}
   redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:5173/auth/feishu/callback}
-  # 可选：空格分隔的 scope，需在飞书后台申请；留空则仅基础登录
   scope: ${FEISHU_SCOPE:}
+  # 事件订阅 Encrypt Key（飞书后台 → 事件与回调）
+  encrypt-key: ${FEISHU_ENCRYPT_KEY:}
 
 logging:
   level:

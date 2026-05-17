@@ -1,56 +1,53 @@
 package com.agentforge.user;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "users")
+@TableName("users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(unique = true, length = 50)
     private String username;
 
-    @Column(name = "password_hash")
+    @TableField("password_hash")
     private String passwordHash;
 
-    @Column(name = "display_name", length = 100)
+    @TableField("display_name")
     private String displayName;
 
-    @Column(length = 255)
     private String email;
 
-    @Column(name = "avatar_url", length = 500)
+    @TableField("avatar_url")
     private String avatarUrl;
 
-    @Column(name = "oauth_provider", length = 20)
+    @TableField("oauth_provider")
     private String oauthProvider;
 
-    @Column(name = "oauth_id", length = 100)
+    @TableField("oauth_id")
     private String oauthId;
 
-    @Column(length = 20)
     private String role = "user";
 
-    @Column(name = "tenant_id")
+    @TableField("tenant_id")
     private Long tenantId = 1L;
 
-    @Column(length = 20)
     private String status = "active";
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
 }
